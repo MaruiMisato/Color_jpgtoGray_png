@@ -8,23 +8,11 @@ using System.Runtime.InteropServices;
 using OpenCvSharp;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Threading;
 
 namespace Color_jpgtoGray_png {
     public partial class Form1:Form {
         public Form1() {
             InitializeComponent();
-        }
-        private static ReaderWriterLock rwl=new ReaderWriterLock();// ロック用のインスタンス
-        private void GetHistgramR(string f,int[] histgram) {
-            using(Bitmap bmp=new Bitmap(f)) {
-                BitmapData data=bmp.LockBits(new Rectangle(0,0,bmp.Width,bmp.Height),ImageLockMode.ReadWrite,PixelFormat.Format32bppArgb);
-                byte[] buf=new byte[bmp.Width*bmp.Height*4];
-                Marshal.Copy(data.Scan0,buf,0,buf.Length);
-                for(int i=0;i<buf.Length;i+=4) histgram[(buf[i]+buf[i+1]+buf[i+2])/3]++;
-                //Marshal.Copy(buf,0,data.Scan0,buf.Length);
-                bmp.UnlockBits(data);
-            }
         }
         private void NoiseRemoveTwoArea(IplImage p_img,byte max) {
             using(IplImage q_img=Cv.CreateImage(Cv.GetSize(p_img),BitDepth.U8,1)) {
@@ -172,7 +160,6 @@ namespace Color_jpgtoGray_png {
                 }
             }
         }
-
         private void GetSpaces(IplImage p_img,byte threshold,int[] ly,int[] lx,ref int new_h,ref int new_w) {
             unsafe {
                 byte* p=(byte*)p_img.ImageData;
@@ -212,23 +199,20 @@ namespace Color_jpgtoGray_png {
                         }
                 }
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
-                //Cv.SaveImage(System.IO.Path.ChangeExtension(f,"bmp"),q_img);
-                //Cv.SaveImage(f,q_img);
             }
         }
 
         private void PNGRemoveAlways(string f,uint n) {
-            while(0!=n--) { 
-                //GetHistgramR(f2,histgram);//bool gray->true
+            while(0!=n--) 
                 using(IplImage g_img=Cv.LoadImage(f,LoadMode.GrayScale)) {
                     int[] histgram=new int[256];
                     unsafe {
                         byte* g=(byte*)g_img.ImageData;
-                        for(int l=0;l<g_img.ImageSize;++l)histgram[g[l]]++;
+                        for(int l=0;l<g_img.ImageSize;histgram[g[l++]]++);
                     }
                     byte i=255;
                     for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
-                    NoiseRemoveTwoArea(g_img,255);//colorには後ほど反映させる
+                    NoiseRemoveTwoArea(g_img,255);
                     int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
                     HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
                     if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,127,ref hi,ref fu,ref mi,ref yo);//background black
@@ -237,7 +221,6 @@ namespace Color_jpgtoGray_png {
                             DeleteSpaces(f,p_img,threshold,0,1);//内部の空白を除去 階調値変換
                         } 
                 }
-            }
         }
         private void button1_Click(object sender,EventArgs e) {
             if(Clipboard.ContainsFileDropList()) {//Check if clipboard has file drop format data. 取得できなかったときはnull listBox1.Items.Clear();
@@ -247,40 +230,39 @@ namespace Color_jpgtoGray_png {
                 string[] all_file=new string[Clipboard.GetFileDropList().Count];
                 int j=0;
                 foreach(string f in Clipboard.GetFileDropList()) all_file[j++]=f;
-                using(StreamWriter writer=new StreamWriter(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")+".txt",false,System.Text.Encoding.GetEncoding("shift_jis")))
-                using(TextWriter writerSync=TextWriter.Synchronized(writer)) { 
-                Parallel.ForEach(all_file,new ParallelOptions() { MaxDegreeOfParallelism=4 },f => {
-                    int[] histgram=new int[256];
-                    GetHistgramR(f,histgram);//bool gray->true
-                    byte i=256-2;
-                    for(/*i=256-2*/;histgram[(byte)(i+1)]==0;--i);
-                    byte max=++i;//(byte)がないとアスファルトでエラー
-                    for(i=1;histgram[(byte)(i-1)]==0;++i);
-                    byte min=--i;//(byte)がないと豆腐でエラー
-                    if(max>min) {//豆腐･アスファルトはスルー
+                using(TextWriter writerSync=TextWriter.Synchronized(new StreamWriter(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")+".txt",false,System.Text.Encoding.GetEncoding("shift_jis")))) { 
+                    Parallel.ForEach(all_file,new ParallelOptions() { MaxDegreeOfParallelism=4 },f => {
                         string f2=System.IO.Path.ChangeExtension(f,"png");
                         using(IplImage g_img=Cv.LoadImage(f,LoadMode.GrayScale)) {//gray
-                            i=255;
-                            for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);
-                            byte threshold=--i;//0.1~0.7/p_img.NChannels
-                            NoiseRemoveTwoArea(g_img,max);//colorには後ほど反映させる
-                            int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
-                            HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
-                            //richTextBox1.Text+=(f+"\n:th="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo);
-                            if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,(byte)((max-min)>>1),ref hi,ref fu,ref mi,ref yo);//background black
-                            using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
-                                writerSync.WriteLine(f+"\n\tth="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo+"\n\tHeight="+g_img.Height+":Width="+g_img.Width+" -> height="+p_img.Height+":width="+p_img.Width);
-                                WhiteCut(g_img,p_img,hi,fu,mi,yo);
-                                DeleteSpaces(f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
+                            int[] histgram=new int[256];
+                            unsafe {
+                                byte* g=(byte*)g_img.ImageData;
+                                for(int l=0;l<g_img.ImageSize;histgram[g[l++]]++);
+                            }
+                            byte i=256-2;
+                            for(/*i=256-2*/;histgram[(byte)(i+1)]==0;--i);byte max=++i;//(byte)がないとアスファルトでエラー
+                            for(i=1;histgram[(byte)(i-1)]==0;++i);byte min=--i;//(byte)がないと豆腐でエラー
+                            if(max>min) {//豆腐･アスファルトはスルー
+                                i=255;
+                                for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
+                                NoiseRemoveTwoArea(g_img,max);//colorには後ほど反映させる
+                                int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
+                                HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
+                                if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,(byte)((max-min)>>1),ref hi,ref fu,ref mi,ref yo);//background black
+                                using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
+                                    writerSync.WriteLine(f+"\n\tth="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo+"\n\tHeight="+g_img.Height+":Width="+g_img.Width+"\n\theight="+p_img.Height+":width="+p_img.Width);
+                                    WhiteCut(g_img,p_img,hi,fu,mi,yo);
+                                    DeleteSpaces(f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
+                                }
+                                PNGRemoveAlways(f2,4);//n回繰り返す
+                                System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
+                                p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
+                                p.Start();
+                                p.WaitForExit();//起動
                             }
                         }
-                        PNGRemoveAlways(f2,10);//n回繰り返す
-                        System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
-                        p.StartInfo.Arguments="/c pngout "+"\""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
-                        p.Start();p.WaitForExit();//起動
-                    }
-                });
-                p.Close();
+                    });
+                    p.Close();
                     writerSync.WriteLine(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss"));
                 }
             } else
