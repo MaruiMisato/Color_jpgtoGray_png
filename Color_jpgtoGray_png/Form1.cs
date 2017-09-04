@@ -8,13 +8,15 @@ using System.Runtime.InteropServices;
 using OpenCvSharp;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Threading;
 
 namespace Color_jpgtoGray_png {
     public partial class Form1:Form {
         public Form1() {
             InitializeComponent();
         }
-       private void GetHistgramR(string f,int[] histgram) {
+        private static ReaderWriterLock rwl=new ReaderWriterLock();// ロック用のインスタンス
+        private void GetHistgramR(string f,int[] histgram) {
             using(Bitmap bmp=new Bitmap(f)) {
                 BitmapData data=bmp.LockBits(new Rectangle(0,0,bmp.Width,bmp.Height),ImageLockMode.ReadWrite,PixelFormat.Format32bppArgb);
                 byte[] buf=new byte[bmp.Width*bmp.Height*4];
@@ -24,7 +26,7 @@ namespace Color_jpgtoGray_png {
                 bmp.UnlockBits(data);
             }
         }
-       private void NoiseRemoveTwoArea(IplImage p_img,byte max) {
+        private void NoiseRemoveTwoArea(IplImage p_img,byte max) {
             using(IplImage q_img=Cv.CreateImage(Cv.GetSize(p_img),BitDepth.U8,1)) {
                 unsafe {
                     byte* p=(byte*)p_img.ImageData,q=(byte*)q_img.ImageData;
@@ -245,6 +247,8 @@ namespace Color_jpgtoGray_png {
                 string[] all_file=new string[Clipboard.GetFileDropList().Count];
                 int j=0;
                 foreach(string f in Clipboard.GetFileDropList()) all_file[j++]=f;
+                using(StreamWriter writer=new StreamWriter(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")+".txt",false,System.Text.Encoding.GetEncoding("shift_jis")))
+                using(TextWriter writerSync=TextWriter.Synchronized(writer)) { 
                 Parallel.ForEach(all_file,new ParallelOptions() { MaxDegreeOfParallelism=4 },f => {
                     int[] histgram=new int[256];
                     GetHistgramR(f,histgram);//bool gray->true
@@ -265,6 +269,7 @@ namespace Color_jpgtoGray_png {
                             //richTextBox1.Text+=(f+"\n:th="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo);
                             if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,(byte)((max-min)>>1),ref hi,ref fu,ref mi,ref yo);//background black
                             using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
+                                writerSync.WriteLine(f+"\n\tth="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo+"\n\tHeight="+g_img.Height+":Width="+g_img.Width+" -> height="+p_img.Height+":width="+p_img.Width);
                                 WhiteCut(g_img,p_img,hi,fu,mi,yo);
                                 DeleteSpaces(f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
                             }
@@ -276,6 +281,8 @@ namespace Color_jpgtoGray_png {
                     }
                 });
                 p.Close();
+                    writerSync.WriteLine(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss"));
+                }
             } else
                 MessageBox.Show("Please select files.");
         }
