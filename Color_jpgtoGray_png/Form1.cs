@@ -262,7 +262,7 @@ namespace Color_jpgtoGray_png {
                             NoiseRemoveTwoArea(g_img,max);//colorには後ほど反映させる
                             int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
                             HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
-                            //logs.Items.Add(f+":th="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo);
+                            //richTextBox1.Text+=(f+"\n:th="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo);
                             if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,(byte)((max-min)>>1),ref hi,ref fu,ref mi,ref yo);//background black
                             using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
                                 WhiteCut(g_img,p_img,hi,fu,mi,yo);
