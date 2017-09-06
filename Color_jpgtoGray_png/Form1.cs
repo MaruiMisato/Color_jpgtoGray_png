@@ -201,7 +201,24 @@ namespace Color_jpgtoGray_png {
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
             }
         }
-
+        private void DeleteSpaces(string f,IplImage p_img,byte threshold) {//内部の空白を除去 グレイスケールのみ
+            int[] ly=new int[p_img.Height],lx=new int[p_img.Width];
+            int new_h=+1,new_w=+1;
+            GetSpaces(p_img,threshold,ly,lx,ref new_h,ref new_w);
+            using(IplImage q_img=Cv.CreateImage(new CvSize(new_w,new_h),BitDepth.U8,1)) {
+                unsafe {
+                    int yy=0;
+                    byte* q=(byte*)q_img.ImageData,p=(byte*)p_img.ImageData;
+                    for(int y=0;y<p_img.Height;y++)
+                        if(ly[y]==0) {
+                            int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                            int xx=0;
+                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)*(255.99/240.0));//255.99ないと255が254になる 4bitに減色
+                        }
+                }
+                Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
+            }
+        }
         private void PNGRemoveAlways(string f,uint n) {
             while(0!=n--) 
                 using(IplImage g_img=Cv.LoadImage(f,LoadMode.GrayScale)) {
@@ -218,7 +235,7 @@ namespace Color_jpgtoGray_png {
                     if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,127,ref hi,ref fu,ref mi,ref yo);//background black
                         using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
                             WhiteCut(g_img,p_img,hi,fu,mi,yo);
-                            DeleteSpaces(f,p_img,threshold,0,1);//内部の空白を除去 階調値変換
+                            DeleteSpaces(f,p_img,threshold);//内部の空白を除去 階調値変換
                         } 
                 }
         }
