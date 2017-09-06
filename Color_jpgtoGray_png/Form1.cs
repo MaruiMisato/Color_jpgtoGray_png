@@ -244,12 +244,21 @@ namespace Color_jpgtoGray_png {
                 unsafe {
                     int yy=0;
                     byte* q=(byte*)q_img.ImageData,p=(byte*)p_img.ImageData;
+                    if(radioButton1.Checked==true)
                     for(int y=0;y<p_img.Height;y++)
                         if(ly[y]==0) {
                             int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
                             int xx=0;
                             for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)*(255.99/240.0));//255.99ないと255が254になる 4bitに減色
-                        }
+                        }else;
+                    else {
+                        for(int y=0;y<p_img.Height;y++)
+                        if(ly[y]==0) {
+                            int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                            int xx=0;
+                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=p[yoffset+x];//255.99ないと255が254になる 4bitに減色
+                        }else;
+                    }
                 }
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
             }
@@ -270,9 +279,9 @@ namespace Color_jpgtoGray_png {
                     HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
                     if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,127,ref hi,ref fu,ref mi,ref yo);//background black
                     using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
-                            WhiteCut(g_img,p_img,hi,fu,mi,yo);
-                            DeleteSpaces(f,p_img,threshold);//内部の空白を除去 階調値変換
-                        } 
+                        WhiteCut(g_img,p_img,hi,fu,mi,yo);
+                        DeleteSpaces(f,p_img,threshold);//内部の空白を除去 階調値変換
+                    } 
                 }
         }
         private void button1_Click(object sender,EventArgs e) {
@@ -308,7 +317,7 @@ namespace Color_jpgtoGray_png {
                                     WhiteCut(g_img,p_img,hi,fu,mi,yo);
                                     DeleteSpaces(f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
                                 }
-                                PNGRemoveAlways(f2,4);//n回繰り返す
+                                PNGRemoveAlways(f2,5);//n回繰り返す
                                 System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
                                 p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
                                 p.Start();
