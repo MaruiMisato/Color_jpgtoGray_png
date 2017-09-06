@@ -86,6 +86,41 @@ namespace Color_jpgtoGray_png {
                 }
             }
         }
+        private void NoiseRemoveWhite(IplImage p_img,byte min) {//White spot will be remove
+            using(IplImage q_img=Cv.CreateImage(Cv.GetSize(p_img),BitDepth.U8,1)) {
+                unsafe {
+                    byte* p=(byte*)p_img.ImageData,q=(byte*)q_img.ImageData;
+                    for(int y=0;y<q_img.ImageSize;++y)q[y]=p[y]>min?(byte)255:(byte)0;//First, binarize
+                    for(int y=1;y<q_img.Height-1;++y) {
+                        int yoffset=(q_img.WidthStep*y);
+                        for(int x=1;x<q_img.Width-1;++x)
+                            if(q[yoffset+x]==0)//Count white spots around black dots
+                                for(int yy=-1;yy<2;++yy) {
+                                    int yyyoffset=q_img.WidthStep*(y+yy);
+                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==0) ++q[yoffset+x];
+                                }
+                    }
+                    for(int y=1;y<q_img.Height-1;++y) {
+                        int yoffset=(q_img.WidthStep*y);
+                        for(int x=1;x<q_img.Width-1;++x) {
+                            if(q[yoffset+x]==7)//When there are seven white spots in the periphery
+                                for(int yy=-1;yy<2;++yy) {
+                                    int yyyoffset = q_img.WidthStep*(y+yy);
+                                    for(int xx=-1;xx<2;++xx) {
+                                        int offset=yyyoffset+(x+xx);
+                                        if(q[offset]==7) {//仲間 ペア
+                                            p[yoffset+x]=min;//q[yoffset+p_img.NChannels*x]=6;//Unnecessary 
+                                            p[offset]=min;q[offset]=6;
+                                            yy=1;break;
+                                        } else;
+                                    }
+                                }
+                            else if(q[yoffset+x]==8)p[yoffset+x]=min;//Independent
+                        }
+                    }
+                }
+            }
+        }
         private void HiFuMiYoBlack(IplImage p_img,byte threshold,ref int hi,ref int fu,ref int mi,ref int yo) {
             unsafe {
                 byte* p=(byte*)p_img.ImageData;
@@ -230,10 +265,11 @@ namespace Color_jpgtoGray_png {
                     byte i=255;
                     for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
                     NoiseRemoveTwoArea(g_img,255);
+                    NoiseRemoveWhite(g_img,0);
                     int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
                     HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
                     if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,127,ref hi,ref fu,ref mi,ref yo);//background black
-                        using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
+                    using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
                             WhiteCut(g_img,p_img,hi,fu,mi,yo);
                             DeleteSpaces(f,p_img,threshold);//内部の空白を除去 階調値変換
                         } 
@@ -263,6 +299,7 @@ namespace Color_jpgtoGray_png {
                                 i=255;
                                 for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
                                 NoiseRemoveTwoArea(g_img,max);//colorには後ほど反映させる
+                                NoiseRemoveWhite(g_img,min);
                                 int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
                                 HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
                                 if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,(byte)((max-min)>>1),ref hi,ref fu,ref mi,ref yo);//background black
