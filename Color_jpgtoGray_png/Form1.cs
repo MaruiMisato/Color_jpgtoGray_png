@@ -218,7 +218,7 @@ namespace Color_jpgtoGray_png {
                 for(int x=1;x<p_img.Width;++x) if(lx[x]<=w_width) { lx[x]=0; ++new_w; }//(p_img.Height+p_img.Width)*0.02)は残す空白の大きさ
             }
         }
-        private void DeleteSpaces(string f,IplImage p_img,byte threshold,byte min,double magnification) {//内部の空白を除去 グレイスケールのみ
+        private void DeleteSpaces(ref string f,IplImage p_img,byte threshold,byte min,double magnification) {//内部の空白を除去 グレイスケールのみ
             int[] ly=new int[p_img.Height],lx=new int[p_img.Width];
             int new_h=+1,new_w=+1;
             GetSpaces(p_img,threshold,ly,lx,ref new_h,ref new_w);
@@ -226,17 +226,28 @@ namespace Color_jpgtoGray_png {
                 unsafe {
                     int yy=0;
                     byte* q=(byte*)q_img.ImageData,p=(byte*)p_img.ImageData;
-                    for(int y=0;y<p_img.Height;y++) 
-                        if(ly[y]==0) {
-                            int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                            int xx=0;
-                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
-                        }
+                    if(radioButton1.Checked==true)
+                        for(int y=0;y<p_img.Height;y++) 
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                int xx=0;
+                                for(int x=0;x<p_img.Width;x++) if(lx[x]==0) {
+                                    int offset=yyoffset+(xx++);
+                                        q[offset]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
+                                        q[offset]=(byte)(((q[offset]>>4)<<4)+(q[offset]>>4));
+                                    }
+                            } else ;
+                    else for(int y=0;y<p_img.Height;y++) 
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                int xx=0;
+                                for(int x=0;x<p_img.Width;x++) if(lx[x]==0) q[yyoffset+(xx++)]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
+                            } else ;
                 }
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
             }
         }
-        private void DeleteSpaces(string f,IplImage p_img,byte threshold) {//内部の空白を除去 グレイスケールのみ
+        private void DeleteSpaces(ref string f,IplImage p_img,byte threshold) {//内部の空白を除去 グレイスケールのみ
             int[] ly=new int[p_img.Height],lx=new int[p_img.Width];
             int new_h=+1,new_w=+1;
             GetSpaces(p_img,threshold,ly,lx,ref new_h,ref new_w);
@@ -249,7 +260,7 @@ namespace Color_jpgtoGray_png {
                         if(ly[y]==0) {
                             int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
                             int xx=0;
-                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)*(255.99/240.0));//255.99ないと255が254になる 4bitに減色
+                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)+(p[yoffset+x]>>4));//255.99ないと255が254になる 4bitに減色
                         }else;
                     else {
                         for(int y=0;y<p_img.Height;y++)
@@ -280,7 +291,7 @@ namespace Color_jpgtoGray_png {
                     if((hi==0)&&(fu==0)&&(mi==g_img.Height-1)&&(yo==g_img.Width-1))HiFuMiYoBlack(g_img,127,ref hi,ref fu,ref mi,ref yo);//background black
                     using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
                         WhiteCut(g_img,p_img,hi,fu,mi,yo);
-                        DeleteSpaces(f,p_img,threshold);//内部の空白を除去 階調値変換
+                        DeleteSpaces(ref f,p_img,threshold);//内部の空白を除去 階調値変換
                     } 
                 }
         }
@@ -315,9 +326,9 @@ namespace Color_jpgtoGray_png {
                                 using(IplImage p_img=Cv.CreateImage(new CvSize((yo-fu)+1,(mi-hi)+1),BitDepth.U8,1)) {
                                     writerSync.WriteLine(f+"\n\tth="+threshold+":min="+min+":max="+max+":hi="+hi+":fu="+fu+":mi="+mi+":yo="+yo+"\n\tHeight="+g_img.Height+":Width="+g_img.Width+"\n\theight="+p_img.Height+":width="+p_img.Width);
                                     WhiteCut(g_img,p_img,hi,fu,mi,yo);
-                                    DeleteSpaces(f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
+                                    DeleteSpaces(ref f2,p_img,(byte)(threshold*(255.99/(max-min))),min,255.99/(max-min));//内部の空白を除去 階調値変換
                                 }
-                                PNGRemoveAlways(f2,5);//n回繰り返す
+                                PNGRemoveAlways(f2,4);//n回繰り返す
                                 System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
                                 p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
                                 p.Start();
