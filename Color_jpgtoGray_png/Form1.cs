@@ -25,7 +25,7 @@ namespace Color_jpgtoGray_png {
                             if(q[yoffset+x]==0)//Count white spots around black dots
                                 for(int yy=-1;yy<2;++yy) {
                                     int yyyoffset=q_img.WidthStep*(y+yy);
-                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==255) ++q[yoffset+x];
+                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==255) ++q[yoffset+x];//自身は数えられないから8が最高
                                 }
                     }
                     for(int y=1;y<q_img.Height-1;y++) {
@@ -94,7 +94,7 @@ namespace Color_jpgtoGray_png {
                     for(int y=1;y<q_img.Height-1;++y) {
                         int yoffset=(q_img.WidthStep*y);
                         for(int x=1;x<q_img.Width-1;++x)
-                            if(q[yoffset+x]==0)//Count white spots around black dots
+                            if(q[yoffset+x]==255)//Count white spots around black dots
                                 for(int yy=-1;yy<2;++yy) {
                                     int yyyoffset=q_img.WidthStep*(y+yy);
                                     for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==0) ++q[yoffset+x];
@@ -224,24 +224,23 @@ namespace Color_jpgtoGray_png {
             GetSpaces(p_img,threshold,ly,lx,ref new_h,ref new_w);
             using(IplImage q_img=Cv.CreateImage(new CvSize(new_w,new_h),BitDepth.U8,1)) {
                 unsafe {
-                    int yy=0;
                     byte* q=(byte*)q_img.ImageData,p=(byte*)p_img.ImageData;
                     if(radioButton1.Checked==true)
-                        for(int y=0;y<p_img.Height;y++) 
+                        for(int y=0,yy=0;y<p_img.Height;++y)
                             if(ly[y]==0) {
                                 int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                                int xx=0;
-                                for(int x=0;x<p_img.Width;x++) if(lx[x]==0) {
+                                for(int x=0,xx=0;x<p_img.Width;++x) 
+                                    if(lx[x]==0) {
                                     int offset=yyoffset+(xx++);
                                         q[offset]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
                                         q[offset]=(byte)(((q[offset]>>4)<<4)+(q[offset]>>4));
                                     }
                             } else ;
-                    else for(int y=0;y<p_img.Height;y++) 
+                    else
+                        for(int y=0,yy=0;y<p_img.Height;++y)
                             if(ly[y]==0) {
                                 int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                                int xx=0;
-                                for(int x=0;x<p_img.Width;x++) if(lx[x]==0) q[yyoffset+(xx++)]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
+                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0) q[yyoffset+(xx++)]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
                             } else ;
                 }
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
@@ -253,21 +252,18 @@ namespace Color_jpgtoGray_png {
             GetSpaces(p_img,threshold,ly,lx,ref new_h,ref new_w);
             using(IplImage q_img=Cv.CreateImage(new CvSize(new_w,new_h),BitDepth.U8,1)) {
                 unsafe {
-                    int yy=0;
                     byte* q=(byte*)q_img.ImageData,p=(byte*)p_img.ImageData;
                     if(radioButton1.Checked==true)
-                    for(int y=0;y<p_img.Height;y++)
-                        if(ly[y]==0) {
-                            int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                            int xx=0;
-                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)+(p[yoffset+x]>>4));//255.99ないと255が254になる 4bitに減色
-                        }else;
+                        for(int y=0,yy=0;y<p_img.Height;++y)
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)+(p[yoffset+x]>>4));//4bitに減色 下位bitを同じので埋める
+                            }else;
                     else {
-                        for(int y=0;y<p_img.Height;y++)
+                        for(int y=0,yy=0;y<p_img.Height;++y)
                         if(ly[y]==0) {
                             int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                            int xx=0;
-                            for(int x=0;x<p_img.Width;x++) if(lx[x]==0)q[yyoffset+(xx++)]=p[yoffset+x];//255.99ないと255が254になる 4bitに減色
+                            for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=p[yoffset+x];//8bit保存
                         }else;
                     }
                 }
@@ -283,7 +279,7 @@ namespace Color_jpgtoGray_png {
                         for(int l=0;l<g_img.ImageSize;histgram[g[l++]]++);
                     }
                     byte i=255;
-                    for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
+                    for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/
                     NoiseRemoveTwoArea(g_img,255);
                     NoiseRemoveWhite(g_img,0);
                     int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
