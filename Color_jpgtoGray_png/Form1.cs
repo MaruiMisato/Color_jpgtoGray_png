@@ -21,12 +21,14 @@ namespace Color_jpgtoGray_png {
                     for(int y=0;y<q_img.ImageSize;++y)q[y]=p[y]<max?(byte)0:(byte)255;//First, binarize
                     for(int y=1;y<q_img.Height-1;y++) {
                         int yoffset=(q_img.WidthStep*y);
-                        for(int x=1;x<q_img.Width-1;x++)
-                            if(q[yoffset+x]==0)//Count white spots around black dots
+                        for(int x=1;x<q_img.Width-1;x++) {
+                            int offset=yoffset+x;
+                            if(q[offset]==0)//Count white spots around black dots
                                 for(int yy=-1;yy<2;++yy) {
                                     int yyyoffset=q_img.WidthStep*(y+yy);
-                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==255) ++q[yoffset+x];//自身は数えられないから8が最高
+                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==255)++q[offset];//自身は数えられないから8が最高
                                 }
+                        }
                     }
                     for(int y=1;y<q_img.Height-1;y++) {
                         int yoffset=(q_img.WidthStep*y);
@@ -59,24 +61,21 @@ namespace Color_jpgtoGray_png {
                         for(int x=0;x<p_img.Width-1;x++) if(p[yyyoffset+x]<threshold) { l=yy+1; break; }
                     }if(l==5) {hi=y;break;} 
                     else y+=l;
-                }
-                for(int y=p_img.Height-1;y>hi;--y) {//Y下取得
+                }for(int y=p_img.Height-1;y>hi;--y) {//Y下取得
                     int l=0;
                     for(int yy=0;((l==yy)&&(yy>-5)&&(y+yy)>hi);--yy) {
                         int yyyoffset=(p_img.WidthStep*(y+yy));
                         for(int x=0;x<p_img.Width-1;x++)if(p[yyyoffset+x]<threshold) { l=yy-1; break; }
                     }if(l==-5) {mi=y;break;}
                     else y+=l;
-                }
-                for(int x=0;x<p_img.Width-1;x++) {//X左取得
+                }for(int x=0;x<p_img.Width-1;x++) {//X左取得
                     int l=0;
                     for(int xx=0;((l==xx)&&(xx<5)&&(x+xx)<p_img.Width-1);++xx) {
                         int xxxoffset=(x+xx);
                         for(int y=hi;y<mi-1;y++) if(p[p_img.WidthStep*y+xxxoffset]<threshold) { l=xx+1; break; }
                     }if(l==5) { fu=x;break; }
                     else x+=l;
-                }
-                for(int x=p_img.Width-1;x>fu;--x) {//X右取得
+                }for(int x=p_img.Width-1;x>fu;--x) {//X右取得
                     int l=0;
                     for(int xx=0;((l==xx)&&(xx>-5)&&(x+xx)>fu);--xx) {
                         int xxxoffset=(x+xx);
@@ -93,34 +92,36 @@ namespace Color_jpgtoGray_png {
                     for(int y=0;y<q_img.ImageSize;++y)q[y]=p[y]>min?(byte)255:(byte)0;//First, binarize
                     for(int y=1;y<q_img.Height-1;++y) {
                         int yoffset=(q_img.WidthStep*y);
-                        for(int x=1;x<q_img.Width-1;++x)
-                            if(q[yoffset+x]==255)//Count white spots around black dots
+                        for(int x=1;x<q_img.Width-1;++x) {
+                            int offset=yoffset+x;
+                            if(q[offset]==255)//Count white spots around black dots
                                 for(int yy=-1;yy<2;++yy) {
                                     int yyyoffset=q_img.WidthStep*(y+yy);
-                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==0) ++q[yoffset+x];
+                                    for(int xx=-1;xx<2;++xx) if(q[yyyoffset+(x+xx)]==0)--q[offset];
                                 }
+                        }
                     }
                     for(int y=1;y<q_img.Height-1;++y) {
                         int yoffset=(q_img.WidthStep*y);
                         for(int x=1;x<q_img.Width-1;++x) {
-                            if(q[yoffset+x]==7)//When there are seven white spots in the periphery
+                            if(q[yoffset+x]==248)//When there are seven white spots in the periphery
                                 for(int yy=-1;yy<2;++yy) {
                                     int yyyoffset = q_img.WidthStep*(y+yy);
                                     for(int xx=-1;xx<2;++xx) {
                                         int offset=yyyoffset+(x+xx);
-                                        if(q[offset]==7) {//仲間 ペア
-                                            p[yoffset+x]=min;//q[yoffset+p_img.NChannels*x]=6;//Unnecessary 
-                                            p[offset]=min;q[offset]=6;
+                                        if(q[offset]==248) {//仲間 ペア
+                                            p[yoffset+x]=min;//q[offset]=0;//Unnecessary 
+                                            p[offset]=min;q[offset]=0;
                                             yy=1;break;
                                         } else;
                                     }
                                 }
-                            else if(q[yoffset+x]==8)p[yoffset+x]=min;//Independent
+                            else if(q[yoffset+x]==247)p[yoffset+x]=min;//Independent
                         }
                     }
                 }
             }
-        }
+        }        
         private void HiFuMiYoBlack(IplImage p_img,byte threshold,ref int hi,ref int fu,ref int mi,ref int yo) {
             unsafe {
                 byte* p=(byte*)p_img.ImageData;
@@ -131,57 +132,54 @@ namespace Color_jpgtoGray_png {
                             int yyyoffset = (p_img.WidthStep*(y+yy));
                             for(int x = 0;x<p_img.Width;x++)if(p[yyyoffset+x]<threshold)++l[yy];
                         }
-                        if((p_img.Width!=l[0])&&(p_img.Width!=l[1])&&(p_img.Width!=l[2])&&(p_img.Width!=l[3])&&(p_img.Width!=l[4])) { hi=y; break; }
+                        if((p_img.Width>l[0])&&(p_img.Width>l[1])&&(p_img.Width>l[2])&&(p_img.Width>l[3])&&(p_img.Width>l[4])) { hi=y; break; }
                     } else {
                         int l=0;
-                        int yyyoffset=(p_img.WidthStep*(y+4));
-                        for(int x = 0;x<p_img.Width;x++)if(p[yyyoffset+x]<threshold) ++l;
-                        if((p_img.Width!=l)) {hi=y; break;}
+                        int yoffset=(p_img.WidthStep*(y+4));
+                        for(int x = 0;x<p_img.Width;x++)if(p[yoffset+x]<threshold) ++l;
+                        if((p_img.Width>l)) { hi=y; break; }
                     }
-                }
-                for(int y=p_img.Height-1;y>(hi+4);--y) {//Y下取得
+                }for(int y=p_img.Height-1;y>(hi+4);--y) {//Y下取得
                     if(y==p_img.Height-1) {
                         int[] l=new int[5];
                         for(int yy=-4;((yy<1)&&(y+yy)>hi);++yy) {
                             int yyyoffset=(p_img.WidthStep*(y+yy));
                             for(int x=0;x<p_img.Width;x++) if(p[yyyoffset+x]<threshold)++l[-yy];
                         }
-                        if((p_img.Width!=l[0])&&(p_img.Width!=l[1])&&(p_img.Width!=l[2])&&(p_img.Width!=l[3])&&(p_img.Width!=l[4])) { mi=y; break; }
+                        if((p_img.Width>l[0])&&(p_img.Width>l[1])&&(p_img.Width>l[2])&&(p_img.Width>l[3])&&(p_img.Width>l[4])) { mi=y; break; }
                     } else {
-                        int yyyoffset=(p_img.WidthStep*(y-4));
+                        int yoffset=(p_img.WidthStep*(y-4));
                         int l=0;
-                        for(int x=0;x<p_img.Width;x++) if(p[yyyoffset+x]<threshold)++l;
-                        if((p_img.Width!=l)) {mi=y;break;}
+                        for(int x=0;x<p_img.Width;x++) if(p[yoffset+x]<threshold)++l;
+                        if((p_img.Width>l)) { mi=y; break; }
                     }
-                }
-                for(int x=0;x<p_img.Width-1-4;x++) {//X左取得
+                }for(int x=0;x<p_img.Width-1-4;x++) {//X左取得
                     if(x==0) {
                         int[] l=new int[5];
                         for(int xx=0;((xx<5)&&(x+xx)<p_img.Width-1);++xx) {
                             int xxxoffset=(x+xx);
                             for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l[xx];
                         }
-                        if(((mi-hi)!=l[0])&&((mi-hi)!=l[1])&&((mi-hi)!=l[2])&&((mi-hi)!=l[3])&&((mi-hi)!=l[4])) {fu=x;break;}
+                        if(((mi-hi)>l[0])&&((mi-hi)>l[1])&&((mi-hi)>l[2])&&((mi-hi)>l[3])&&((mi-hi)>l[4])) { fu=x; break; }
                     } else {
-                        int xxxoffset=(x+4);
+                        int xoffset=(x+4);
                         int l=0;
-                        for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l;
-                        if((mi-hi)!=l) {fu=x;break;}
+                        for(int y=hi;y<mi;y++) if(p[xoffset+p_img.WidthStep*y]<threshold)++l;
+                        if((mi-hi)>l) { fu=x; break; }
                     }
-                }
-                for(int x=p_img.Width-1;x>(fu+4);--x) {//X右取得
+                }for(int x=p_img.Width-1;x>(fu+4);--x) {//X右取得
                     if(x==p_img.Width-1) {
                         int[] l=new int[5];
                         for(int xx=-4;((xx<0)&&(x+xx)>fu);++xx) {
                             int xxxoffset=(x+xx);
                             for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l[-xx];
                         }
-                        if(((mi-hi)!=l[0])&&((mi-hi)!=l[1])&&((mi-hi)!=l[2])&&((mi-hi)!=l[3])&&((mi-hi)!=l[4])) {yo=x;break;}
+                        if(((mi-hi)>l[0])&&((mi-hi)>l[1])&&((mi-hi)>l[2])&&((mi-hi)>l[3])&&((mi-hi)>l[4])) { yo=x; break; }
                     } else {
-                        int xxxoffset=(x-4);
+                        int xoffset=(x-4);
                         int l=0;
-                        for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l;
-                        if((mi-hi)!=l) {yo=x;break;}
+                        for(int y=hi;y<mi;y++) if(p[xoffset+p_img.WidthStep*y]<threshold)++l;
+                        if((mi-hi)>l) { yo=x; break; }
                     }
                 }
             }
