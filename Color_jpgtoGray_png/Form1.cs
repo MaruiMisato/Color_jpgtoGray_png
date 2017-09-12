@@ -289,11 +289,19 @@ namespace Color_jpgtoGray_png {
                     } 
                 }
         }
+        private void PNGOut(string[] all_file) {
+            System.Diagnostics.Process p=new System.Diagnostics.Process();//Create a Process object
+            p.StartInfo.FileName=System.Environment.GetEnvironmentVariable("ComSpec");//ComSpec(cmd.exe)のパスを取得して、FileNameプロパティに指定
+            p.StartInfo.WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden;//HiddenMaximizedMinimizedNormal
+            Parallel.ForEach(all_file,new ParallelOptions() { MaxDegreeOfParallelism=4 },f => {
+                p.StartInfo.Arguments="/c pngout "+System.IO.Path.ChangeExtension(f,"png");//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
+                //p.StartInfo.Arguments="/c pngout \""+System.IO.Path.ChangeExtension(f,"png")+"\"";
+                p.Start();p.WaitForExit();//起動
+            });
+            p.Close();
+        }
         private void button1_Click(object sender,EventArgs e) {
             if(Clipboard.ContainsFileDropList()) {//Check if clipboard has file drop format data. 取得できなかったときはnull listBox1.Items.Clear();
-                System.Diagnostics.Process p=new System.Diagnostics.Process();//Create a Process object
-                p.StartInfo.FileName=System.Environment.GetEnvironmentVariable("ComSpec");//ComSpec(cmd.exe)のパスを取得して、FileNameプロパティに指定
-                p.StartInfo.WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden;//HiddenMaximizedMinimizedNormal
                 string[] all_file=new string[Clipboard.GetFileDropList().Count];
                 int j=0;
                 foreach(string f in Clipboard.GetFileDropList()) all_file[j++]=f;
@@ -324,15 +332,12 @@ namespace Color_jpgtoGray_png {
                                 }
                                 PNGRemoveAlways(f2,4);//n回繰り返す
                                 System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
-                                p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
-                                p.Start();
-                                p.WaitForExit();//起動
                             }
                         }
                     });
-                    p.Close();
                     writerSync.WriteLine(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss"));
                 }
+                PNGOut(all_file);
             } else
                 MessageBox.Show("Please select files.");
         }
