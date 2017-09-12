@@ -54,30 +54,30 @@ namespace Color_jpgtoGray_png {
         private void HiFuMiYoWhite(IplImage p_img,byte threshold,ref int hi,ref int fu,ref int mi,ref int yo) {
             unsafe {
                 byte* p=(byte*)p_img.ImageData;
-                for(int y=0;y<p_img.Height-4;y++) {//Y上取得
+                for(int y=0;y<p_img.Height-1;y++) {//Y上取得
                     int l=0;
-                    for(int yy=0;(l==yy)&&(yy<5);++yy) {
+                    for(int yy=0;((l==yy)&&(yy<5)&&(y+yy)<p_img.Height-1);++yy) {
                         int yyyoffset=(p_img.WidthStep*(y+yy));
                         for(int x=0;x<p_img.Width-1;x++) if(p[yyyoffset+x]<threshold) { l=yy+1; break; }
                     }if(l==5) {hi=y;break;} 
                     else y+=l;
-                }for(int y=p_img.Height-1;y>hi+4;--y) {//Y下取得
+                }for(int y=p_img.Height-1;y>hi;--y) {//Y下取得
                     int l=0;
-                    for(int yy=0;(l==yy)&&(yy>-5);--yy) {
+                    for(int yy=0;((l==yy)&&(yy>-5)&&(y+yy)>hi);--yy) {
                         int yyyoffset=(p_img.WidthStep*(y+yy));
                         for(int x=0;x<p_img.Width-1;x++)if(p[yyyoffset+x]<threshold) { l=yy-1; break; }
                     }if(l==-5) {mi=y;break;}
                     else y+=l;
-                }for(int x=0;x<p_img.Width-4;x++) {//X左取得
+                }for(int x=0;x<p_img.Width-1;x++) {//X左取得
                     int l=0;
-                    for(int xx=0;(l==xx)&&(xx<5);++xx) {
+                    for(int xx=0;((l==xx)&&(xx<5)&&(x+xx)<p_img.Width-1);++xx) {
                         int xxxoffset=(x+xx);
                         for(int y=hi;y<mi-1;y++) if(p[p_img.WidthStep*y+xxxoffset]<threshold) { l=xx+1; break; }
                     }if(l==5) { fu=x;break; }
                     else x+=l;
-                }for(int x=p_img.Width-1;x>fu+4;--x) {//X右取得
+                }for(int x=p_img.Width-1;x>fu;--x) {//X右取得
                     int l=0;
-                    for(int xx=0;(l==xx)&&(xx>-5);--xx) {
+                    for(int xx=0;((l==xx)&&(xx>-5)&&(x+xx)>fu);--xx) {
                         int xxxoffset=(x+xx);
                         for(int y=hi;y<mi;y++)if(p[p_img.WidthStep*y+xxxoffset]<threshold) { l=xx-1; break; }
                     }if(l==-5) { yo=x;break; }
@@ -125,10 +125,10 @@ namespace Color_jpgtoGray_png {
         private void HiFuMiYoBlack(IplImage p_img,byte threshold,ref int hi,ref int fu,ref int mi,ref int yo) {
             unsafe {
                 byte* p=(byte*)p_img.ImageData;
-                for(int y=0;y<p_img.Height-4;y++) {//Y上取得
+                for(int y=0;y<p_img.Height-1-4;y++) {//Y上取得
                     if(y==0){
                         int[] l=new int[5];
-                        for(int yy = 0;(yy<5);++yy) {
+                        for(int yy = 0;((yy<5)&&(y+yy)<p_img.Height-1);++yy) {
                             int yyyoffset = (p_img.WidthStep*(y+yy));
                             for(int x = 0;x<p_img.Width;x++)if(p[yyyoffset+x]<threshold)++l[yy];
                         }
@@ -137,12 +137,12 @@ namespace Color_jpgtoGray_png {
                         int l=0;
                         int yoffset=(p_img.WidthStep*(y+4));
                         for(int x = 0;x<p_img.Width;x++)if(p[yoffset+x]<threshold) ++l;
-                        if((p_img.Width>l)) { hi=y-4; break; }
+                        if((p_img.Width>l)) { hi=y; break; }
                     }
                 }for(int y=p_img.Height-1;y>(hi+4);--y) {//Y下取得
                     if(y==p_img.Height-1) {
                         int[] l=new int[5];
-                        for(int yy=-4;(yy<1);++yy) {
+                        for(int yy=-4;((yy<1)&&(y+yy)>hi);++yy) {
                             int yyyoffset=(p_img.WidthStep*(y+yy));
                             for(int x=0;x<p_img.Width;x++) if(p[yyyoffset+x]<threshold)++l[-yy];
                         }
@@ -151,35 +151,35 @@ namespace Color_jpgtoGray_png {
                         int yoffset=(p_img.WidthStep*(y-4));
                         int l=0;
                         for(int x=0;x<p_img.Width;x++) if(p[yoffset+x]<threshold)++l;
-                        if((p_img.Width>l)) { mi=y+4; break; }
+                        if((p_img.Width>l)) { mi=y; break; }
                     }
-                }for(int x=0;x<p_img.Width-4;x++) {//X左取得
+                }for(int x=0;x<p_img.Width-1-4;x++) {//X左取得
                     if(x==0) {
                         int[] l=new int[5];
-                        for(int xx=0;(xx<5);++xx) {
+                        for(int xx=0;((xx<5)&&(x+xx)<p_img.Width-1);++xx) {
                             int xxxoffset=(x+xx);
-                            for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.Width*y]<threshold)++l[xx];
+                            for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l[xx];
                         }
                         if(((mi-hi)>l[0])&&((mi-hi)>l[1])&&((mi-hi)>l[2])&&((mi-hi)>l[3])&&((mi-hi)>l[4])) { fu=x; break; }
                     } else {
                         int xoffset=(x+4);
                         int l=0;
                         for(int y=hi;y<mi;y++) if(p[xoffset+p_img.WidthStep*y]<threshold)++l;
-                        if((mi-hi)>l) { fu=x-4; break; }
+                        if((mi-hi)>l) { fu=x; break; }
                     }
                 }for(int x=p_img.Width-1;x>(fu+4);--x) {//X右取得
                     if(x==p_img.Width-1) {
                         int[] l=new int[5];
-                        for(int xx=-4;(xx<1);++xx) {
+                        for(int xx=-4;((xx<0)&&(x+xx)>fu);++xx) {
                             int xxxoffset=(x+xx);
-                            for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.Width*y]<threshold)++l[-xx];
+                            for(int y=hi;y<mi;y++) if(p[xxxoffset+p_img.WidthStep*y]<threshold)++l[-xx];
                         }
                         if(((mi-hi)>l[0])&&((mi-hi)>l[1])&&((mi-hi)>l[2])&&((mi-hi)>l[3])&&((mi-hi)>l[4])) { yo=x; break; }
                     } else {
                         int xoffset=(x-4);
                         int l=0;
                         for(int y=hi;y<mi;y++) if(p[xoffset+p_img.WidthStep*y]<threshold)++l;
-                        if((mi-hi)>l) { yo=x+4; break; }
+                        if((mi-hi)>l) { yo=x; break; }
                     }
                 }
             }
@@ -188,7 +188,7 @@ namespace Color_jpgtoGray_png {
             unsafe {
                 byte* p=(byte*)p_img.ImageData,q=(byte*)q_img.ImageData;
                 for(int y=hi;y<=mi;++y) {
-                    int yoffset=(p_img.Width*y),qyoffset=(q_img.Width*(y-hi));
+                    int yoffset=(p_img.WidthStep*y),qyoffset=(q_img.WidthStep*(y-hi));
                     for(int x=fu;x<=yo;++x)q[qyoffset+(x-fu)]=p[yoffset+x];
                 }
             }
@@ -291,9 +291,9 @@ namespace Color_jpgtoGray_png {
         }
         private void button1_Click(object sender,EventArgs e) {
             if(Clipboard.ContainsFileDropList()) {//Check if clipboard has file drop format data. 取得できなかったときはnull listBox1.Items.Clear();
-                //System.Diagnostics.Process p=new System.Diagnostics.Process();//Create a Process object
-                //p.StartInfo.FileName=System.Environment.GetEnvironmentVariable("ComSpec");//ComSpec(cmd.exe)のパスを取得して、FileNameプロパティに指定
-                //p.StartInfo.WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden;//HiddenMaximizedMinimizedNormal
+                System.Diagnostics.Process p=new System.Diagnostics.Process();//Create a Process object
+                p.StartInfo.FileName=System.Environment.GetEnvironmentVariable("ComSpec");//ComSpec(cmd.exe)のパスを取得して、FileNameプロパティに指定
+                p.StartInfo.WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden;//HiddenMaximizedMinimizedNormal
                 string[] all_file=new string[Clipboard.GetFileDropList().Count];
                 int j=0;
                 foreach(string f in Clipboard.GetFileDropList()) all_file[j++]=f;
@@ -324,13 +324,13 @@ namespace Color_jpgtoGray_png {
                                 }
                                 PNGRemoveAlways(f2,4);//n回繰り返す
                                 System.IO.File.Delete(System.IO.Path.ChangeExtension(f,"jpg"));//Disposal of garbage//System.IO.File.Move(f,System.IO.Path.ChangeExtension(f,"png"));//実際にファイル名を変更する
-                                //p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
-                                //p.Start();
-                                //p.WaitForExit();//起動
+                                p.StartInfo.Arguments="/c pngout \""+f2+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
+                                p.Start();
+                                p.WaitForExit();//起動
                             }
                         }
                     });
-                    //p.Close();
+                    p.Close();
                     writerSync.WriteLine(DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss"));
                 }
             } else
