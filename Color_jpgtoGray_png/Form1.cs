@@ -230,8 +230,19 @@ namespace Color_jpgtoGray_png {
                                 for(int x=0,xx=0;x<p_img.Width;++x) 
                                     if(lx[x]==0) {
                                     int offset=yyoffset+(xx++);
-                                        q[offset]=(byte)(magnification*(p[yoffset+x]-min));//255.99ないと255が254になる
+                                        q[offset]=(byte)(magnification*(p[yoffset+x]-min));
                                         q[offset]=(byte)(((q[offset]>>4)<<4)+(q[offset]>>4));
+                                    }
+                            } else ;
+                    else if(radioButton3.Checked==true)
+                        for(int y=0,yy=0;y<p_img.Height;++y)
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                for(int x=0,xx=0;x<p_img.Width;++x) 
+                                    if(lx[x]==0) {
+                                    int offset=yyoffset+(xx++);
+                                        q[offset]=(byte)(magnification*(p[yoffset+x]-min));
+                                        q[offset]=(byte)(((q[offset]>>6)<<6)+((q[offset]>>6)<<4)+((q[offset]>>6)<<2)+((q[offset]>>6)));
                                     }
                             } else ;
                     else
@@ -255,14 +266,20 @@ namespace Color_jpgtoGray_png {
                         for(int y=0,yy=0;y<p_img.Height;++y)
                             if(ly[y]==0) {
                                 int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)+(p[yoffset+x]>>4));//4bitに減色 下位bitを同じので埋める
+                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>4)<<4)+(p[yoffset+x]>>4));//2bitに減色 下位bitを同じので埋める
+                            }else;
+                    else if(radioButton3.Checked==true)
+                        for(int y=0,yy=0;y<p_img.Height;++y)
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0) q[yyoffset+(xx++)]=(byte)(((p[yoffset+x]>>6)<<6)+((p[yoffset+x]>>6)<<4)+((p[yoffset+x]>>6)<<2)+((p[yoffset+x]>>6)));//4bitに減色 下位bitを同じので埋める
                             }else;
                     else {
                         for(int y=0,yy=0;y<p_img.Height;++y)
-                        if(ly[y]==0) {
-                            int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
-                            for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=p[yoffset+x];//8bit保存
-                        }else;
+                            if(ly[y]==0) {
+                                int yyoffset=q_img.WidthStep*(yy++),yoffset=p_img.WidthStep*y;
+                                for(int x=0,xx=0;x<p_img.Width;++x) if(lx[x]==0)q[yyoffset+(xx++)]=p[yoffset+x];//8bit保存
+                            }else;
                     }
                 }
                 Cv.SaveImage(f,q_img,new ImageEncodingParam(ImageEncodingID.PngCompression,0));
@@ -294,8 +311,8 @@ namespace Color_jpgtoGray_png {
             p.StartInfo.FileName=System.Environment.GetEnvironmentVariable("ComSpec");//ComSpec(cmd.exe)のパスを取得して、FileNameプロパティに指定
             p.StartInfo.WindowStyle=System.Diagnostics.ProcessWindowStyle.Hidden;//HiddenMaximizedMinimizedNormal
             Parallel.ForEach(all_file,new ParallelOptions() { MaxDegreeOfParallelism=4 },f => {
-                p.StartInfo.Arguments="/c pngout "+System.IO.Path.ChangeExtension(f,"png");//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
-                //p.StartInfo.Arguments="/c pngout \""+System.IO.Path.ChangeExtension(f,"png")+"\"";
+                //p.StartInfo.Arguments="/c pngout "+System.IO.Path.ChangeExtension(f,"png");
+                p.StartInfo.Arguments="/c pngout \""+System.IO.Path.ChangeExtension(f,"png")+"\"";//By default, PNGOUT will not overwrite a PNG file if it was not able to compress it further.
                 p.Start();p.WaitForExit();//起動
             });
             p.Close();
@@ -314,13 +331,13 @@ namespace Color_jpgtoGray_png {
                                 byte* g=(byte*)g_img.ImageData;
                                 for(int l=0;l<g_img.ImageSize;histgram[g[l++]]++);
                             }
-                            byte i=256-2;
-                            for(/*i=256-2*/;histgram[(byte)(i+1)]==0;--i);byte max=++i;//(byte)がないとアスファルトでエラー
+                            byte i;
+                            for(i=256-2;histgram[(byte)(i+1)]==0;--i);byte max=++i;//(byte)がないとアスファルトでエラー
                             for(i=1;histgram[(byte)(i-1)]==0;++i);byte min=--i;//(byte)がないと豆腐でエラー
                             if(max>min) {//豆腐･アスファルトはスルー
                                 i=255;
                                 for(int total=0;(total+=histgram[i])<g_img.ImageSize*0.6;--i);byte threshold=--i;//0.1~0.7/p_img.NChannels
-                                NoiseRemoveTwoArea(g_img,max);//colorには後ほど反映させる
+                                NoiseRemoveTwoArea(g_img,max);
                                 NoiseRemoveWhite(g_img,min);
                                 int hi=0,fu=0,mi=g_img.Height-1,yo=g_img.Width-1;
                                 HiFuMiYoWhite(g_img,threshold,ref hi,ref fu,ref mi,ref yo);
