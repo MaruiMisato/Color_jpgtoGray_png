@@ -1,0 +1,1 @@
+bin\Release\ColorJPG2GrayPNG.exe
